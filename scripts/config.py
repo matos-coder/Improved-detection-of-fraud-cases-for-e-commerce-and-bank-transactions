@@ -8,7 +8,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # --- Define input and output paths ---
 RAW_DATA_DIR = os.path.join(BASE_DIR, 'data', 'raw')
 PROCESSED_DATA_DIR = os.path.join(BASE_DIR, 'data', 'processed')
-IMAGE_DIR = os.path.join(BASE_DIR, 'outputs', 'images')
+IMAGE_DIR = os.path.join(BASE_DIR, 'data', 'processed', 'images')
 
 # Create output directories if they don't exist
 os.makedirs(PROCESSED_DATA_DIR, exist_ok=True)
