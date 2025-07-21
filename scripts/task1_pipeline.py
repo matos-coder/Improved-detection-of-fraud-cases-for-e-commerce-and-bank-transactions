@@ -43,13 +43,16 @@ def clean_and_prepare_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def merge_with_ip_data(fraud_df: pd.DataFrame, ip_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Converts IP addresses to integers and merges fraud data with geolocation data.
+    Merges fraud data with geolocation data using the numeric IP address.
     """
     print("\n--- Merging with Geolocation Data ---")
     try:
-        print("🔄 Converting IP addresses to integer format...")
-        fraud_df['ip_address_int'] = fraud_df['ip_address'].apply(lambda ip: int(ipaddress.ip_address(ip)))
-        
+        # --- THIS IS THE CORRECTED LOGIC ---
+        # The 'ip_address' column is already a number (float), so we just convert it to an integer.
+        print("🔄 Converting float 'ip_address' column to integer format...")
+        fraud_df['ip_address_int'] = fraud_df['ip_address'].astype(int)
+        print("✅ 'ip_address' converted to integer.")
+
         print("🔄 Merging dataframes based on IP range. This may take a moment...")
         country_list = []
         # This loop is for demonstration. For very large data, `pd.merge_asof` would be more efficient.
@@ -62,9 +65,10 @@ def merge_with_ip_data(fraud_df: pd.DataFrame, ip_df: pd.DataFrame) -> pd.DataFr
             country_list.append(country[0] if len(country) > 0 else 'Unknown')
         
         fraud_df['country'] = country_list
-        fraud_df.drop(columns=['ip_address_int'], inplace=True)
+        fraud_df.drop(columns=['ip_address_int'], inplace=True) # Clean up temporary column
         
         print(f"✅ Merge complete. Found {fraud_df['country'].nunique()} unique countries.")
+        print(f"   Transactions with 'Unknown' country: {fraud_df[fraud_df['country'] == 'Unknown'].shape[0]}")
     except Exception as e:
         print(f"❌ An unexpected error occurred during the merge: {e}")
         
