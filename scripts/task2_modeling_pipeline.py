@@ -2,14 +2,11 @@
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 import lightgbm as lgb
 from imblearn.over_sampling import SMOTE
-from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.metrics import f1_score, precision_recall_curve, auc, confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 import time
@@ -20,26 +17,14 @@ def prepare_ecommerce_data(df):
     """
     print("\n--- Preparing E-commerce Data for Modeling ---")
     try:
-        # Define features (X) and target (y)
-        # We drop identifier columns and the original time/IP columns
         X = df.drop(columns=['class', 'user_id', 'signup_time', 'purchase_time', 'device_id', 'ip_address'])
         y = df['class']
-
-        # Identify categorical and numerical features for preprocessing
         categorical_features = ['source', 'browser', 'sex', 'country']
         numerical_features = X.select_dtypes(include=np.number).columns.tolist()
-
-        print(f"✅ Target variable 'class' separated.")
-        print(f"✅ Identified {len(numerical_features)} numerical features.")
-        print(f"✅ Identified {len(categorical_features)} categorical features.")
-        
+        print("✅ Data preparation successful.")
         return X, y, numerical_features, categorical_features
-
     except KeyError as e:
-        print(f"❌ ERROR: Column {e} not found. Make sure the processed data is correct.")
-        return None, None, None, None
-    except Exception as e:
-        print(f"❌ An unexpected error occurred during data preparation: {e}")
+        print(f"❌ ERROR: Column {e} not found during data preparation.")
         return None, None, None, None
 
 def prepare_creditcard_data(df):
@@ -48,94 +33,75 @@ def prepare_creditcard_data(df):
     """
     print("\n--- Preparing Credit Card Data for Modeling ---")
     try:
-        # The 'Time' column might not be a useful feature as is, but we can scale it.
-        # All V1-V28 columns are already numerical and scaled. 'Amount' needs scaling.
         X = df.drop(columns=['Class'])
         y = df['Class']
-
-        # All features are numerical in this dataset
         numerical_features = X.columns.tolist()
-        categorical_features = [] # No categorical features in this dataset
-
-        print(f"✅ Target variable 'Class' separated.")
-        print(f"✅ Identified {len(numerical_features)} numerical features.")
-        
+        categorical_features = []
+        print("✅ Data preparation successful.")
         return X, y, numerical_features, categorical_features
-
     except KeyError as e:
-        print(f"❌ ERROR: Column {e} not found. Make sure the credit card data is correct.")
-        return None, None, None, None
-    except Exception as e:
-        print(f"❌ An unexpected error occurred during data preparation: {e}")
+        print(f"❌ ERROR: Column {e} not found during data preparation.")
         return None, None, None, None
 
-def create_preprocessing_pipeline(numerical_features, categorical_features):
+def create_preprocessor(numerical_features, categorical_features):
     """
-    Creates a scikit-learn pipeline to preprocess data:
-    - Scales numerical features.
-    - One-hot encodes categorical features.
+    Creates a ColumnTransformer to preprocess data.
     """
-    print("\n--- Creating Data Preprocessing Pipeline ---")
-    
-    # Create a transformer for numerical features (scaling)
+    print("--- Creating data preprocessor ---")
     numeric_transformer = StandardScaler()
-    
-    # Create a transformer for categorical features (one-hot encoding)
-    # handle_unknown='ignore' prevents errors if a category appears in test but not train
     categorical_transformer = OneHotEncoder(handle_unknown='ignore')
-    
-    # Use ColumnTransformer to apply different transformers to different columns
     preprocessor = ColumnTransformer(
         transformers=[
             ('num', numeric_transformer, numerical_features),
             ('cat', categorical_transformer, categorical_features)
-        ])
-    
-    print("✅ Preprocessing pipeline created successfully.")
+        ],
+        remainder='passthrough' # Keep other columns if any
+    )
+    print("✅ Preprocessor created.")
     return preprocessor
 
 def train_and_evaluate_model(X_train, y_train, X_test, y_test, preprocessor, model, model_name):
     """
-    Creates a full pipeline with SMOTE, preprocessing, and the model.
-    Then, it trains the model and evaluates its performance.
+    A new, more explicit pipeline for training and evaluation.
     """
     print(f"\n===== Training and Evaluating: {model_name} =====")
     start_time = time.time()
     
-    # Create the full pipeline
-    # Step 1: Apply SMOTE for oversampling
-    # Step 2: Apply the preprocessing pipeline (scaling and encoding)
-    # Step 3: Train the model
-    pipeline = ImbPipeline(steps=[('smote', SMOTE(random_state=42)),
-                                  ('preprocessor', preprocessor),
-                                  ('classifier', model)])
-    
-    print("🔄 Training the model pipeline...")
     try:
-        # Train the entire pipeline on the training data
-        pipeline.fit(X_train, y_train)
+        # Step 1: Fit the preprocessor on the training data and transform it
+        print("🔄 [Step 1/5] Preprocessing training data...")
+        X_train_processed = preprocessor.fit_transform(X_train)
+        print("✅ Training data preprocessed.")
+
+        # Step 2: Apply SMOTE to the processed training data
+        print("🔄 [Step 2/5] Applying SMOTE to handle class imbalance...")
+        smote = SMOTE(random_state=42)
+        X_train_resampled, y_train_resampled = smote.fit_resample(X_train_processed, y_train)
+        print(f"✅ SMOTE applied. New training set size: {X_train_resampled.shape[0]} samples.")
+
+        # Step 3: Train the model on the resampled data
+        print(f"🔄 [Step 3/5] Training the {model_name} model...")
+        model.fit(X_train_resampled, y_train_resampled)
         print("✅ Model training complete.")
-        
-        # --- Evaluation ---
-        print("🔄 Evaluating model on the test set...")
-        
-        # Make predictions on the unseen test data
-        y_pred = pipeline.predict(X_test)
-        
-        # Get prediction probabilities for the positive class (for AUC-PR)
-        y_pred_proba = pipeline.predict_proba(X_test)[:, 1]
-        
-        # Calculate F1 Score
+
+        # Step 4: Preprocess the test data using the *already fitted* preprocessor
+        print("🔄 [Step 4/5] Preprocessing test data...")
+        X_test_processed = preprocessor.transform(X_test)
+        print("✅ Test data preprocessed.")
+
+        # Step 5: Evaluate the model on the processed test data
+        print("🔄 [Step 5/5] Evaluating model performance...")
+        y_pred = model.predict(X_test_processed)
+        y_pred_proba = model.predict_proba(X_test_processed)[:, 1]
+
         f1 = f1_score(y_test, y_pred)
-        print(f"  - F1 Score: {f1:.4f}")
-        
-        # Calculate Precision-Recall AUC
         precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
         pr_auc = auc(recall, precision)
-        print(f"  - Area Under PR Curve (AUC-PR): {pr_auc:.4f}")
         
-        # Generate and display Confusion Matrix
-        print("  - Confusion Matrix:")
+        print("\n--- Evaluation Results ---")
+        print(f"  - F1 Score: {f1:.4f}")
+        print(f"  - Area Under PR Curve (AUC-PR): {pr_auc:.4f}")
+
         cm = confusion_matrix(y_test, y_pred)
         disp = ConfusionMatrixDisplay(confusion_matrix=cm)
         disp.plot(cmap=plt.cm.Blues)
@@ -144,9 +110,10 @@ def train_and_evaluate_model(X_train, y_train, X_test, y_test, preprocessor, mod
 
         end_time = time.time()
         print(f"⏱️ Total time for {model_name}: {end_time - start_time:.2f} seconds")
-        
         return f1, pr_auc
 
     except Exception as e:
-        print(f"❌ An error occurred during model training or evaluation for {model_name}: {e}")
+        print(f"❌ An error occurred during the pipeline for {model_name}: {e}")
+        import traceback
+        traceback.print_exc()
         return None, None
