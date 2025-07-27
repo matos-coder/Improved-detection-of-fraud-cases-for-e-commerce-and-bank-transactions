@@ -1,18 +1,12 @@
 # 🛡️ Advanced Fraud Detection for E-commerce and Banking
 
-![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)
-![Machine Learning](https://img.shields.io/badge/ML-Fraud%20Detection-green.svg)
-![Status](https://img.shields.io/badge/status-active-success.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-
-
 ## 📋 Project Overview
+This repository contains a comprehensive machine learning pipeline for Adey Innovations Inc., designed to enhance the detection of fraudulent transactions in both e-commerce and banking sectors. The project tackles the critical business need to minimize financial losses from fraud while ensuring a seamless and positive user experience by reducing false positives.
 
-This repository contains a **comprehensive machine learning pipeline** for **Adey Innovations Inc.**, designed to enhance the detection of fraudulent transactions in both **e-commerce** and **banking** sectors. The project tackles the critical business need to minimize financial losses from fraud while ensuring a seamless and positive user experience by reducing false positives.
+By leveraging advanced data analysis, feature engineering, and machine learning, this project delivers a robust solution that can identify complex fraud patterns from raw transaction data.
 
-By leveraging **advanced data analysis**, **feature engineering**, and **machine learning**, this project delivers a robust solution that can identify complex fraud patterns from raw transaction data.
 
-### 🎯 Key Features
+## 🎯 Key Features
 
 - ✅ **Modular Data Pipeline** - Reusable preprocessing pipeline for cleaning and preparing transaction data
 - ✅ **In-depth EDA** - Comprehensive exploratory data analysis to uncover hidden fraud patterns
@@ -25,34 +19,30 @@ By leveraging **advanced data analysis**, **feature engineering**, and **machine
 ---
 
 ## 📁 Project Structure
-
-```
 fraud_detection_project/
 │
 ├── 📂 data/
-│   ├── 📂 raw/
-│   │   ├── 📄 Fraud_Data.csv
-│   │   ├── 📄 IpAddress_to_Country.csv
-│   │   └── 📄 creditcard.csv
-│   └── 📂 processed/
-│       ├── 📂 images/
-│       └── 📄 processed_fraud_data.csv
+│   ├── 📂 raw/
+│   │   ├── 📄 Fraud_Data.csv
+│   │   ├── 📄 IpAddress_to_Country.csv
+│   │   └── 📄 creditcard.csv
+│   └── 📂 processed/
+│       └── 📄 processed_fraud_data.csv
 │
 ├── 📂 notebooks/
-│   └── 📓 1_Data_Processing_and_EDA.ipynb
+│   ├── 📓 1_Data_Processing_and_EDA.ipynb
+│   └── 📓 2_Model_Training_and_Evaluation.ipynb
 │
 ├── 📂 scripts/
-│   ├── 🐍 __init__.py
-│   ├── ⚙️ config.py
-│   └── 🔧 task1_pipeline.py
+│   ├── 🐍 __init__.py
+│   ├── ⚙️ config.py
+│   ├── 🔧 task1_pipeline.py
+│   └── 🧠 task2_modeling_pipeline.py
 │
-├── 📂 config/
-├── 📂 src/
-├── 📂 tests/
+├── 📂 outputs/
+│   └── �️ images/
+│
 └── 📖 README.md
-```
-
----
 
 ## 🚀 Setup Instructions
 
@@ -79,28 +69,20 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3. 📦 Install Required Dependencies
+pip install pandas numpy matplotlib seaborn scikit-learn imbalanced-learn lightgbm
 
-```bash
-pip install pandas numpy matplotlib seaborn scikit-learn
-```
+Or install from a requirements.txt file:
 
-Or install from requirements file:
-```bash
 pip install -r requirements.txt
-```
-
----
 
 ## 🎯 Task 1: Data Analysis and Preprocessing
+Objective: To thoroughly clean, analyze, and enrich the e-commerce transaction dataset (Fraud_Data.csv) to prepare it for machine learning model training.
 
-> **Objective:** To thoroughly clean, analyze, and enrich the e-commerce transaction dataset (`Fraud_Data.csv`) to prepare it for machine learning model training.
-
-📍 **Location:** The entire workflow is orchestrated in `notebooks/1_Data_Processing_and_EDA.ipynb`, which calls modular functions from `scripts/task1_pipeline.py`.
+📍 Location: The entire workflow is orchestrated in notebooks/1_Data_Processing_and_EDA.ipynb, which calls modular functions from scripts/task1_pipeline.py.
 
 ### 🧹 Data Cleaning and Preprocessing
+Goal: To ensure data quality and consistency. This is a critical first step as model performance is highly dependent on clean data.
 
-**Goal:** To ensure data quality and consistency. This is a critical first step as model performance is highly dependent on clean data.
 
 #### Implementation:
 
@@ -145,68 +127,119 @@ pip install -r requirements.txt
 
 > 💡 **Justification:** These engineered features are designed based on well-known fraud typologies, such as fraudsters creating accounts and using them immediately.
 
-### ⚖️ Handling Class Imbalance
+## 🎯 Task 2: Model Building and Training
+Objective: To build, train, and evaluate machine learning models to accurately detect fraudulent transactions on both the e-commerce and credit card datasets.
 
-**Goal:** To outline a clear and justified strategy for training a model on a dataset with a rare positive class.
+📍 Location: The workflow is orchestrated in notebooks/2_Model_Training_and_Evaluation.ipynb, with logic encapsulated in scripts/task2_modeling_pipeline.py.
 
-#### 📋 Strategy:
+### 🧠 Model Selection
+Goal: To compare a simple, interpretable baseline model against a powerful, complex ensemble model to find the best solution for the business problem.
+
+
+| Model | Type | Justification |
+|---|---|---|
+| 📈 Logistic Regression | Baseline | A simple, fast, and highly interpretable model. Excellent for establishing a performance benchmark. |
+| 🌳 LightGBM | Powerful Ensemble | A gradient boosting framework known for high performance and efficiency. It can capture complex, non-linear patterns that simpler models miss. |
+
+### ⚙️ Data Preparation and Preprocessing
+Goal: To prepare the data for the machine learning models by scaling numerical features and encoding categorical ones.
+
+
+📋 Strategy:
 
 | Component | Approach | Reasoning |
-|-----------|----------|-----------|
-| 🔍 **Problem Identification** | Fraud class is minority (~9%) | Naive model would achieve >90% accuracy by predicting non-fraud |
-| 🎯 **Chosen Technique** | SMOTE (Synthetic Minority Over-sampling) | Generates synthetic minority samples |
-| 📊 **Implementation Plan** | Apply SMOTE only to training set | Prevents data leakage in test set |
+|---|---|---|
+| ✂️ Train-Test Split | 80/20 split using stratify | Ensures the same percentage of fraud cases in both training and testing sets, which is crucial for imbalanced data. |
+| ⚖️ Numerical Scaling | StandardScaler | Scales numerical features to have a mean of 0 and standard deviation of 1, preventing features with large ranges from dominating the model. |
+| 🏷️ Categorical Encoding | OneHotEncoder | Converts categorical text data (e.g., 'Chrome', 'Ads') into a numerical format that the models can understand. |
 
-> ⚠️ **Important:** SMOTE is chosen over undersampling to avoid discarding valuable majority class data.
+### ⚖️ Handling Class Imbalance (SMOTE)
+Goal: To address the severe class imbalance identified in Task 1 to ensure the model learns to identify the minority (fraud) class effectively.
 
----
+
+| Component | Approach | Reasoning |
+|---|---|---|
+| 🎯 Chosen Technique | SMOTE (Synthetic Minority Over-sampling) | Creates new, synthetic examples of the minority class in the training data only. |
+| 💡 Justification |  | By balancing the class distribution, SMOTE forces the model to learn the patterns of fraudulent transactions instead of just ignoring them. This is critical for building a useful fraud detection system. |
+
+## 📈 Model Training and Evaluation
+Goal: To train the selected models and rigorously evaluate their performance using metrics appropriate for imbalanced classification.
+
+
+📊 Evaluation Metrics:
+
+| Metric | What It Measures | Why It's Important for Fraud |
+|---|---|---|
+| 🎯 F1-Score | The harmonic mean of Precision and Recall. | Provides a single score that balances the cost of false positives (annoying customers) and false negatives (missing fraud). |
+| 📈 AUC-PR | Area Under the Precision-Recall Curve. | The best metric for imbalanced data. It evaluates the model's ability to distinguish between classes across all possible decision thresholds. A higher score means a more robust model. |
+| 🔢 Confusion Matrix | A table showing True Positives, True Negatives, False Positives, and False Negatives. | Gives a detailed breakdown of the model's prediction accuracy for both classes. |
+
+## 🏆 Results and Justification
+The performance of both models was evaluated on both the e-commerce and credit card datasets.
+
+
+📊 Final Performance Summary:
+
+| Dataset | Model | F1 Score | AUC-PR |
+|---|---|---|---|
+| E-commerce | Logistic Regression | 0.6133 | 0.7634 |
+| E-commerce | LightGBM | 0.8407 | 0.8872 |
+| Credit Card | Logistic Regression | 0.1171 | 0.7637 |
+| Credit Card | LightGBM | 0.8614 | 0.8491 |
+
+💡 Conclusion: LightGBM is the Best Model
+Justification:
+Across both datasets, the LightGBM model demonstrates overwhelmingly superior performance.
+
+Higher F1-Score and AUC-PR: The significantly higher scores indicate that LightGBM is far better at correctly identifying fraudulent transactions while maintaining a low false positive rate.
+
+Business Value: For Adey Innovations Inc., this translates directly to more fraud caught and fewer legitimate customers impacted, maximizing revenue protection and customer satisfaction.
+
+While Logistic Regression provides a useful baseline, its performance is insufficient for a production-level fraud detection system. The advanced capabilities of LightGBM are essential for this business use case.
 
 ## 🚀 How to Run the Pipeline
-
-### 📓 Task 1 - Data Processing and EDA
-
+📓 Task 1 - Data Processing and EDA
 Execute the complete pipeline by running the Jupyter Notebook:
 
+
 ```bash
-# Navigate to the notebook
+# Navigate to the notebook and run the cells
 jupyter notebook notebooks/1_Data_Processing_and_EDA.ipynb
 ```
 
-**This will:**
-- 📥 Load raw data
-- 🧹 Execute cleaning and feature engineering
-- 📊 Generate EDA plots → `data/processed/images/`
-- 💾 Save processed data → `data/processed/`
+🧠 Task 2 - Model Building and Training
+Execute the modeling pipeline by running the second Jupyter Notebook:
 
----
+```bash
+# Navigate to the notebook and run the cells
+jupyter notebook notebooks/2_Model_Training_and_Evaluation.ipynb
+```
+
+This will:
+
+- 📥 Load the processed e-commerce data and raw credit card data.
+- ⚙️ Preprocess, split, and balance the data.
+- 🧠 Train and evaluate both Logistic Regression and LightGBM models.
+- 📊 Display performance metrics and confusion matrices for each model.
+- 🏆 Provide a final summary and justification for the best model.
 
 ## 🤝 Contributing
 
-1. 🍴 Fork the repository
-2. 🌿 Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. 💾 Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. 📤 Push to the branch (`git push origin feature/amazing-feature`)
-5. 🔄 Open a Pull Request
-
----
+🍴 Fork the repository
+🌿 Create a feature branch (`git checkout -b feature/amazing-feature`)
+💾 Commit your changes (`git commit -m 'Add some amazing feature'`)
+📤 Push to the branch (`git push origin feature/amazing-feature`)
+🔄 Open a Pull Request
 
 ## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 📞 Contact
+Adey Innovations Inc.
 
-**Adey Innovations Inc.**
+📧 Email: contact@adeyinnovations.com
 
-- 📧 Email: contact@adeyinnovations.com
-- 🌐 Website: [www.adeyinnovations.com](https://www.adeyinnovations.com)
-- 💼 LinkedIn: [Adey Innovations](https://linkedin.com/company/adey-innovations)
+🌐 Website: www.adeyinnovations.com
 
-
-
-**⭐ Star this repository if you find it helpful!**
-
-Made with ❤️ by the matias ashenafi
+💼 LinkedIn: Adey Innovations
 
