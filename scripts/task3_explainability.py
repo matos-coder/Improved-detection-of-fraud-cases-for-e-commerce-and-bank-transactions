@@ -1,116 +1,78 @@
-# In[1]:
-# Cell 1: Setup and Imports
-# ==============================================================================
+# scripts/task3_explainability.py
+
+import shap
+import matplotlib.pyplot as plt
 import pandas as pd
-import sys
-import os
-import lightgbm as lgb
-from sklearn.model_selection import train_test_split
 
-# Add project root to path to allow module imports
-module_path = os.path.abspath(os.path.join('..'))
-if module_path not in sys.path:
-    sys.path.append(module_path)
-
-from scripts import config
-from scripts import task1_pipeline as pipe1
-from scripts import task2_modeling_pipeline as pipe2
-from scripts import task3_explainability as pipe3 # Our new explainability script
-
-print("✅ Setup Complete. Libraries and modules imported.")
-
-
-# In[2]:
-# Cell 2: Load and Prepare E-commerce Data
-# ==============================================================================
-# For this task, we will focus on explaining our best model for the more
-# complex e-commerce dataset.
-
-print("--- Loading and Preparing E-commerce Data ---")
-try:
-    ecommerce_df = pd.read_csv(config.PROCESSED_FRAUD_DATA_PATH)
-    print("✅ Processed e-commerce data loaded successfully.")
+def explain_model_with_shap(model, preprocessor, X_train, X_test, model_type):
+    """
+    Uses SHAP to explain the model's predictions.
+    Generates and saves a summary plot and a force plot for a single prediction.
+    """
+    print(f"\n===== Generating SHAP Explanations for {model_type} Model =====")
     
-    # Prepare data for modeling
-    X_ecom, y_ecom, num_ecom, cat_ecom = pipe2.prepare_ecommerce_data(ecommerce_df)
+    try:
+        # --- Data Preparation for SHAP ---
+        # 1. Preprocess the test data
+        print("🔄 [Step 1/4] Preprocessing test data for SHAP...")
+        X_test_processed = preprocessor.transform(X_test)
+        
+        # 2. Get feature names after one-hot encoding
+        try:
+            # For scikit-learn >= 1.0
+            cat_feature_names = preprocessor.named_transformers_['cat'].get_feature_names_out()
+        except AttributeError:
+            # For older scikit-learn versions
+            cat_feature_names = preprocessor.named_transformers_['cat'].get_feature_names()
+            
+        num_feature_names = preprocessor.named_transformers_['num'].feature_names_in_
+        feature_names = list(num_feature_names) + list(cat_feature_names)
+        
+        # Convert the processed test data back to a DataFrame with proper column names
+        X_test_processed_df = pd.DataFrame(X_test_processed, columns=feature_names)
+        print("✅ Test data preprocessed with feature names.")
 
-    # Perform Train-Test Split
-    X_train_ecom, X_test_ecom, y_train_ecom, y_test_ecom = train_test_split(
-        X_ecom, y_ecom, test_size=0.2, random_state=42, stratify=y_ecom
-    )
-    print("✅ Data prepared and split successfully.")
-    
-except Exception as e:
-    print(f"❌ An error occurred during data loading or preparation: {e}")
+        # --- SHAP Analysis ---
+        # 3. Create a SHAP explainer object
+        # TreeExplainer is optimized for tree-based models like LightGBM
+        print("🔄 [Step 2/4] Creating SHAP explainer and calculating SHAP values...")
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_test_processed_df)
+        print("✅ SHAP values calculated.")
+
+        # --- Generate and Save Plots ---
+        # 4. Generate and save the Summary Plot
+        print("🔄 [Step 3/4] Generating and saving SHAP Summary Plot...")
+        plt.figure()
+        shap.summary_plot(shap_values, X_test_processed_df, plot_type="bar", show=False)
+        plt.title(f'SHAP Feature Importance ({model_type})', fontsize=16)
+        plt.tight_layout()
+        # Note: You might need to adjust the path in a real project
+        plt.savefig(f'outputs/images/shap_summary_{model_type.lower()}.png', dpi=300)
+        print(f"✅ SHAP Summary Plot saved to 'outputs/images/shap_summary_{model_type.lower()}.png'")
+        plt.close()
+        
+        # Display the summary plot in the notebook
+        shap.summary_plot(shap_values, X_test_processed_df)
 
 
-# In[3]:
-# Cell 3: Retrain the Best Model (LightGBM)
-# ==============================================================================
-# We need a trained model object to explain. Let's quickly retrain our best
-# performer, LightGBM, on the e-commerce data.
-
-print("--- Retraining the LightGBM Model ---")
-
-# Create the preprocessor
-preprocessor_ecom = pipe2.create_preprocessor(num_ecom, cat_ecom)
-
-# Get the processed training data and apply SMOTE
-X_train_processed = preprocessor_ecom.fit_transform(X_train_ecom)
-X_train_resampled, y_train_resampled = pipe2.SMOTE(random_state=42).fit_resample(X_train_processed, y_train_ecom)
-
-# Initialize and train the model
-lgbm_model = lgb.LGBMClassifier(random_state=42)
-lgbm_model.fit(X_train_resampled, y_train_resampled)
-
-print("✅ Best model (LightGBM) has been retrained successfully.")
+        # 5. Generate and save a Force Plot for a single prediction
+        print("🔄 [Step 4/4] Generating and saving SHAP Force Plot for a single prediction...")
+        # We'll explain the first prediction in the test set
+        plt.figure()
+        # Use shap.force_plot for a single instance
+        shap.force_plot(explainer.expected_value[1], shap_values[1][0,:], X_test_processed_df.iloc[0,:], matplotlib=True, show=False)
+        plt.title(f'SHAP Force Plot for a Single Prediction ({model_type})', fontsize=12)
+        plt.tight_layout()
+        plt.savefig(f'outputs/images/shap_force_plot_{model_type.lower()}.png', dpi=300, bbox_inches='tight')
+        print(f"✅ SHAP Force Plot saved to 'outputs/images/shap_force_plot_{model_type.lower()}.png'")
+        plt.close()
+        
+        # Display the force plot in the notebook
+        return shap.force_plot(explainer.expected_value[1], shap_values[1][0,:], X_test_processed_df.iloc[0,:])
 
 
-# In[4]:
-# Cell 4: Generate and Interpret SHAP Explanations
-# ==============================================================================
-# This is the core of Task 3. We call our function to generate SHAP plots.
-# The function will save the plots as images and also display them here.
-
-pipe3.explain_model_with_shap(lgbm_model, preprocessor_ecom, X_train_ecom, X_test_ecom, "E-commerce")
-
-
-# In[5]:
-# Cell 5: Interpretation of SHAP Plots
-# ==============================================================================
-# This is where you explain what the plots reveal.
-
-print("\n\n===== Interpretation of SHAP Plots =====")
-print("""
-### **1. Global Feature Importance (Summary Plot)**
-
-The SHAP summary plot gives us a high-level view of the most important features for the model across the entire dataset.
-
-**Key Insights:**
-* **`time_since_signup_seconds` is the most impactful feature.** The plot clearly shows that low values (blue dots on the left) have a high positive SHAP value, meaning they strongly push the model's prediction towards "fraud." This confirms our EDA finding that quick purchases after signup are a major red flag.
-* **`purchase_value` and `device_id_count` are also highly significant.** High purchase values and devices used for multiple transactions are strong indicators of fraud.
-* **Categorical features like `country` and `source` play a role.** Certain countries and acquisition sources (e.g., `source_Ads`) contribute to the model's fraud prediction, though less than the top numerical features.
-
-**Business Implication:** This tells us that Adey Innovations should focus its fraud prevention rules heavily on the time between signup and purchase. It also validates the importance of tracking device fingerprints.
-
----
-
-### **2. Local Prediction Explanation (Force Plot)**
-
-The Force Plot explains a **single, specific prediction**. It shows the "forces" that pushed the model's prediction for one transaction.
-
-**How to Read It:**
-* The **base value** is the average prediction over the entire dataset.
-* **Red arrows** represent features that pushed the prediction **higher (towards fraud)**. The size of the arrow indicates the strength of the push.
-* **Blue arrows** represent features that pushed the prediction **lower (towards legitimate)**.
-
-**Analysis of the Example Plot:**
-For the specific transaction shown, the prediction was pushed towards fraud primarily by:
-1.  A **very low `time_since_signup_seconds`**.
-2.  A **high `purchase_value`**.
-
-These two factors were strong enough to overcome other features that might have suggested the transaction was legitimate (e.g., a low-risk country or a common browser).
-
-**Business Implication:** This level of detail is invaluable for explaining to a customer or an analyst why a specific transaction was flagged. It moves the model from being a "black box" to a transparent, auditable decision-making tool.
-""")
-
+    except Exception as e:
+        print(f"❌ An error occurred during SHAP analysis: {e}")
+        import traceback
+        traceback.print_exc()
